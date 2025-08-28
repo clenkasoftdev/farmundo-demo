@@ -1,0 +1,54 @@
+{
+  "info": {
+    "name": "Farmundo Demo API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Ping",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/api/ping", "host": ["{{baseUrl}}"], "path": ["api", "ping"] }
+      }
+    },
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": { "raw": "{{baseUrl}}/health", "host": ["{{baseUrl}}"], "path": ["health"] }
+      }
+    },
+    {
+      "name": "Identity: Me",
+      "request": {
+        "method": "GET",
+        "header": [{"key":"Authorization","value":"Bearer {{bearerToken}}","type":"text"}],
+        "url": { "raw": "{{baseUrl}}/api/Identity/me", "host": ["{{baseUrl}}"], "path": ["api","Identity","me"] }
+      }
+    },
+    {
+      "name": "Chat: Send",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key":"Authorization","value":"Bearer {{bearerToken}}","type":"text"},
+          {"key":"Content-Type","value":"application/json"}
+        ],
+        "body": {"mode":"raw","raw":"{\n  \"conversationId\": \"{{conversationId}}\",\n  \"content\": \"Hello from Postman!\"\n}"},
+        "url": { "raw": "{{baseUrl}}/api/Chat/send", "host": ["{{baseUrl}}"], "path": ["api","Chat","send"] }
+      }
+    },
+    {
+      "name": "Chat: Get Conversation",
+      "request": {
+        "method": "GET",
+        "header": [
+          {"key":"Authorization","value":"Bearer {{bearerToken}}","type":"text"}
+        ],
+        "url": { "raw": "{{baseUrl}}/api/Chat/{{conversationId}}?take=50", "host": ["{{baseUrl}}"], "path": ["api","Chat","{{conversationId}}"], "query": [{"key":"take","value":"50"}] }
+      }
+    }
+  ]
+}

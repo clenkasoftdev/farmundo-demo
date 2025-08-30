@@ -12,14 +12,14 @@ EXPOSE 8081
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
-COPY ["Directory.Build.props", "."]
-COPY ["Farmundo.Demo.Api/Farmundo.Demo.Api.csproj", "Farmundo.Demo.Api/"]
-COPY ["Farmundo.Demo.Application/Farmundo.Demo.Application.csproj", "Farmundo.Demo.Application/"]
-COPY ["Farmundo.Demo.Domain/Farmundo.Demo.Domain.csproj", "Farmundo.Demo.Domain/"]
-COPY ["Farmundo.Demo.Contracts/Farmundo.Demo.Contracts.csproj", "Farmundo.Demo.Contracts/"]
-COPY ["Farmundo.Demo.Infrastructure/Farmundo.Demo.Infrastructure.csproj", "Farmundo.Demo.Infrastructure/"]
+COPY ["src/backend/Directory.Build.props", "."]
+COPY ["src/backend/Farmundo.Demo.Api/Farmundo.Demo.Api.csproj", "Farmundo.Demo.Api/"]
+COPY ["src/backend/Farmundo.Demo.Application/Farmundo.Demo.Application.csproj", "Farmundo.Demo.Application/"]
+COPY ["src/backend/Farmundo.Demo.Domain/Farmundo.Demo.Domain.csproj", "Farmundo.Demo.Domain/"]
+COPY ["src/backend/Farmundo.Demo.Contracts/Farmundo.Demo.Contracts.csproj", "Farmundo.Demo.Contracts/"]
+COPY ["src/backend/Farmundo.Demo.Infrastructure/Farmundo.Demo.Infrastructure.csproj", "Farmundo.Demo.Infrastructure/"]
 RUN dotnet restore "./Farmundo.Demo.Api/Farmundo.Demo.Api.csproj"
-COPY . .
+COPY src/backend/. .
 WORKDIR "/src/Farmundo.Demo.Api"
 RUN dotnet build "./Farmundo.Demo.Api.csproj" -c $BUILD_CONFIGURATION -o /app/build
 

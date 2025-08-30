@@ -8,7 +8,7 @@ on:
 
 defaults:
   run:
-    working-directory: src/backend
+    working-directory: ./src/backend
 
 jobs:
   build_and_test:

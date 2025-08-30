@@ -3,6 +3,7 @@ using System;
 using Farmundo.Demo.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Farmundo.Demo.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250830051905_AddedRolesAndProfilesToDB")]
+    partial class AddedRolesAndProfilesToDB
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -103,9 +106,6 @@ namespace Farmundo.Demo.Infrastructure.Migrations
                     b.Property<DateTimeOffset>("FirstSeenUtc")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
                     b.Property<DateTimeOffset>("LastSeenUtc")
                         .HasColumnType("timestamp with time zone");
 
@@ -124,9 +124,8 @@ namespace Farmundo.Demo.Infrastructure.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
-                    b.Property<string>("Subscription")
-                        .IsRequired()
-                        .HasColumnType("text");
+                    b.Property<int>("Subscription")
+                        .HasColumnType("integer");
 
                     b.Property<string>("UserName")
                         .IsRequired()

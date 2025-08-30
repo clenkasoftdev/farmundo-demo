@@ -1,13 +1,24 @@
-using HealthChecks.NpgSql;
-using HealthChecks.Redis;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.EntityFrameworkCore;
+using Farmundo.Demo.Api.Authorization;
+using Farmundo.Demo.Api.Configurations;
+using Farmundo.Demo.Api.Hubs;
+using Farmundo.Demo.Api.Security;
+using Farmundo.Demo.Application.Abstractions.Chat;
+using Farmundo.Demo.Application.Abstractions.Persistence;
+using Farmundo.Demo.Application.Abstractions.Users;
+using Farmundo.Demo.Application.Services.Chat;
+using Farmundo.Demo.Application.Services.Users;
+using Farmundo.Demo.Domain.Models;
 using Farmundo.Demo.Infrastructure.Persistence;
 using Farmundo.Demo.Infrastructure.Repositories;
-using Farmundo.Demo.Application.Abstractions.Chat;
-using Farmundo.Demo.Application.Services.Chat;
-using Farmundo.Demo.Application.Abstractions.Persistence;
-using Farmundo.Demo.Api.Hubs;
+using HealthChecks.NpgSql;
+using HealthChecks.Redis;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
+using System.IdentityModel.Tokens.Jwt;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,7 +27,31 @@ var config = builder.Configuration;
 
 services.AddControllers();
 services.AddEndpointsApiExplorer();
-services.AddSwaggerGen();
+
+services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "Farmundo Demo API", Version = "v1" });
+    // Manual Bearer token entry only
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "JWT Authorization header using the Bearer scheme. Example: 'Bearer {token}'",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT"
+    });
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
 
 // EF Core PgSQL
 services.AddDbContext<AppDbContext>(options =>
@@ -24,20 +59,27 @@ services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(config.GetConnectionString("Postgres"));
 });
 
-// Redis cache + SignalR backplane
-services.AddStackExchangeRedisCache(o =>
+// Redis cache + SignalR backplane (optional)
+var redisCnn = config.GetConnectionString("Redis");
+if (!string.IsNullOrWhiteSpace(redisCnn))
 {
-    o.Configuration = config.GetConnectionString("Redis");
-});
-services.AddSignalR().AddStackExchangeRedis(config.GetConnectionString("Redis"));
+    services.AddStackExchangeRedisCache(o => o.Configuration = redisCnn);
+    services.AddSignalR().AddStackExchangeRedis(redisCnn);
+}
+else
+{
+    services.AddDistributedMemoryCache();
+    services.AddSignalR();
+}
 
 // Health checks
 services.AddHealthChecks()
     .AddNpgSql(config.GetConnectionString("Postgres")!)
     .AddRedis(config.GetConnectionString("Redis")!);
 
-// Auth: JWT bearer for either Azure B2C or Cognito via config
-var authProvider = config.GetValue<string>("Auth:Provider");
+// Auth: bind JwtBearerOptions from configuration (User Secrets / appsettings)
+services.ConfigureOptions<JwtBearerConfigOptions>();
+
 services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -45,25 +87,11 @@ services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
-    if (string.Equals(authProvider, "AzureB2C", StringComparison.OrdinalIgnoreCase))
-    {
-        options.Authority = config["AzureAdB2C:Authority"];
-        options.Audience = config["AzureAdB2C:ClientId"];
-        options.TokenValidationParameters = new() { ValidIssuer = options.Authority };
-    }
-    else if (string.Equals(authProvider, "Cognito", StringComparison.OrdinalIgnoreCase))
-    {
-        var region = config["Cognito:Region"];
-        var poolId = config["Cognito:UserPoolId"];
-        var clientId = config["Cognito:ClientId"];
-        options.Authority = $"https://cognito-idp.{region}.amazonaws.com/{poolId}";
-        options.Audience = clientId;
-    }
+    // Keep only SignalR access_token support; all other options are bound from configuration
     options.Events = new JwtBearerEvents
     {
         OnMessageReceived = context =>
         {
-            // Allow SignalR access token via query string for WebSockets
             var accessToken = context.Request.Query["access_token"];
             var path = context.HttpContext.Request.Path;
             if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs/chat"))
@@ -74,24 +102,35 @@ services.AddAuthentication(options =>
         }
     };
 });
+
+// Custom authorization handlers
+services.AddScoped<IAuthorizationHandler, SubscriptionHandler>();
+services.AddScoped<IAuthorizationHandler, LocalRoleOrClaimHandler>();
+
 services.AddAuthorization(options =>
 {
-    options.AddPolicy("Farmer", p => p.RequireClaim("role", "farmer"));
-    options.AddPolicy("Buyer", p => p.RequireClaim("role", "buyer"));
-    options.AddPolicy("Admin", p => p.RequireClaim("role", "admin"));
+    // Admin if claim role==admin OR local role admin
+    options.AddPolicy("Admin", p => p.Requirements.Add(new LocalRoleOrClaimRequirement("admin")));
+
+    // Subscription policies
+    options.AddPolicy("SubscriptionTrial", p => p.Requirements.Add(new SubscriptionRequirement(SubscriptionTier.Trial)));
+    options.AddPolicy("SubscriptionStandard", p => p.Requirements.Add(new SubscriptionRequirement(SubscriptionTier.Standard)));
+    options.AddPolicy("SubscriptionPremium", p => p.Requirements.Add(new SubscriptionRequirement(SubscriptionTier.Premium)));
 });
+
+// Claims normalization
+services.AddSingleton<IClaimsTransformation, ClaimsMappingTransformation>();
 
 // DI registrations
 services.AddScoped<IChatRepository, ChatRepository>();
 services.AddScoped<IChatService, ChatService>();
+services.AddScoped<IUserProfileRepository, UserProfileRepository>();
+services.AddScoped<IUserProfileService, UserProfileService>();
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+app.UseSwagger();
+app.UseSwaggerUI();
 
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 

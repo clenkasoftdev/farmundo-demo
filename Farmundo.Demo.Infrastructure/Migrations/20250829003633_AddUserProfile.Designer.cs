@@ -3,6 +3,7 @@ using System;
 using Farmundo.Demo.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Farmundo.Demo.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250829003633_AddUserProfile")]
+    partial class AddUserProfile
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -70,25 +73,6 @@ namespace Farmundo.Demo.Infrastructure.Migrations
                     b.ToTable("ChatMessages");
                 });
 
-            modelBuilder.Entity("Farmundo.Demo.Domain.Models.Role", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Name")
-                        .IsUnique();
-
-                    b.ToTable("Roles");
-                });
-
             modelBuilder.Entity("Farmundo.Demo.Domain.Models.UserProfile", b =>
                 {
                     b.Property<Guid>("Id")
@@ -102,9 +86,6 @@ namespace Farmundo.Demo.Infrastructure.Migrations
 
                     b.Property<DateTimeOffset>("FirstSeenUtc")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
 
                     b.Property<DateTimeOffset>("LastSeenUtc")
                         .HasColumnType("timestamp with time zone");
@@ -124,10 +105,6 @@ namespace Farmundo.Demo.Infrastructure.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
-                    b.Property<string>("Subscription")
-                        .IsRequired()
-                        .HasColumnType("text");
-
                     b.Property<string>("UserName")
                         .IsRequired()
                         .HasMaxLength(256)
@@ -139,50 +116,6 @@ namespace Farmundo.Demo.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("UserProfiles");
-                });
-
-            modelBuilder.Entity("Farmundo.Demo.Domain.Models.UserRole", b =>
-                {
-                    b.Property<Guid>("UserProfileId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("RoleId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("UserProfileId", "RoleId");
-
-                    b.HasIndex("RoleId");
-
-                    b.ToTable("UserRoles");
-                });
-
-            modelBuilder.Entity("Farmundo.Demo.Domain.Models.UserRole", b =>
-                {
-                    b.HasOne("Farmundo.Demo.Domain.Models.Role", "Role")
-                        .WithMany("UserRoles")
-                        .HasForeignKey("RoleId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Farmundo.Demo.Domain.Models.UserProfile", "UserProfile")
-                        .WithMany("UserRoles")
-                        .HasForeignKey("UserProfileId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Role");
-
-                    b.Navigation("UserProfile");
-                });
-
-            modelBuilder.Entity("Farmundo.Demo.Domain.Models.Role", b =>
-                {
-                    b.Navigation("UserRoles");
-                });
-
-            modelBuilder.Entity("Farmundo.Demo.Domain.Models.UserProfile", b =>
-                {
-                    b.Navigation("UserRoles");
                 });
 #pragma warning restore 612, 618
         }

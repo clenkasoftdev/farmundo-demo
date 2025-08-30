@@ -19,6 +19,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.IdentityModel.Tokens.Jwt;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -27,6 +28,7 @@ var config = builder.Configuration;
 
 services.AddControllers();
 services.AddEndpointsApiExplorer();
+services.AddMemoryCache();
 
 services.AddSwaggerGen(c =>
 {
@@ -80,6 +82,8 @@ services.AddHealthChecks()
 // Auth: bind JwtBearerOptions from configuration (User Secrets / appsettings)
 services.ConfigureOptions<JwtBearerConfigOptions>();
 
+
+JwtSecurityTokenHandler.DefaultMapInboundClaims = false;
 services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -90,6 +94,20 @@ services.AddAuthentication(options =>
     // Keep only SignalR access_token support; all other options are bound from configuration
     options.Events = new JwtBearerEvents
     {
+        // TODO remove for production. Just used here for testing/debugging purposes
+        OnTokenValidated = context =>
+        {
+            var claims = context.Principal.Claims;
+            // Log all claims here to debug
+            var sb = new StringBuilder();
+            foreach (var claim in claims)
+            {
+                sb.Append($"{claim.Type}:{claim.Value} , ");
+            }
+            var res = sb.ToString();
+            return Task.CompletedTask;
+        },
+
         OnMessageReceived = context =>
         {
             var accessToken = context.Request.Query["access_token"];

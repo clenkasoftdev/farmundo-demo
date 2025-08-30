@@ -1,0 +1,10 @@
+version: '3.7'
+
+services:
+  api:
+    image: ${REPOSITORY-local}/Farmundo.Demo.Api:${TAG-latest}
+    build:
+      context: .
+      args:
+        DOTNET_REGISTRY: ${DOTNET_REGISTRY-mcr.microsoft.com}
+      dockerfile: src/Backend/Farmundo.Demo.Api/Dockerfile

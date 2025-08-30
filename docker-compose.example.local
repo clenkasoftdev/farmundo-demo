@@ -1,0 +1,69 @@
+version: '3.7'
+
+services:
+  api:
+   build:
+     context: .
+     dockerfile: Farmundo.Demo.Api/Dockerfile
+   image: farmundo-demo-api:latest
+   environment:
+     ASPNETCORE_ENVIRONMENT: Development
+     ASPNETCORE_URLS: https://+:8081;http://+:8080
+   volumes:
+     - ${USERPROFILE:-$HOME}/.aspnet/https:/https:ro
+   ports:
+     - "8080:8080"
+     - "8081:8081"
+   depends_on:
+     postgresdb:
+       condition: service_healthy
+     redis:
+       condition: service_started
+   networks:
+      - farmundo_network
+  redis:
+    container_name: redis
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - farmundo_network
+
+  postgresdb:
+    container_name: postgres_db
+    image: postgres:14-alpine
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=yourusername
+      - POSTGRES_PASSWORD=YourPassword
+      - POSTGRES_DB=chatdb
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - farmundo_network
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin4
+    restart: always
+    ports:
+      - "8888:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: your-email@example.com
+      PGADMIN_DEFAULT_PASSWORD: YourPassword
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    networks:
+      - farmundo_network
+
+volumes:
+  redis_data:
+  postgres_data:
+  pgadmin-data:
+
+networks:
+  farmundo_network:
+    driver: bridge
